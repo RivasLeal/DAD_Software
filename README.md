@@ -9,8 +9,8 @@ The DAD is a software that is currently capable of:
 2) Removing Multiple Bluetooth Devices
 3) Sending Messages to specified Devices
 4) Toggling the state of transmission for each KID
+5) Allowing Data recording to be saved as a CSV in a specified location
 
 DAD additions in Development:
 
-1) Allowing Data recording to be saved as a CSV in a specified location
-2) Plot the signal of the incoming data
+1) Plot the signal of the incoming data
