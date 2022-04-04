@@ -8,6 +8,7 @@ from File_Menu import *
 from Tracking import *
 from Functions import *
 from Graphing import *
+from Display_Window import *
 
 def main():
     #Creates the Main Gui
@@ -20,29 +21,35 @@ def main():
     root.configure(background = 'light gray')
     
     #Setting the Size
-    root.geometry("800x800")
+    root.geometry("820x790")
     
     #Taskbar Icon for the GUI
     photo = PhotoImage(file = "dad.png")
     root.iconphoto(True, photo)
     
+    #Is being used to store a filename and directory for recording purposes
+    FileName = Current_File()
+    
     #Is being used to keep track of the the number of devices and type
-    Devices = Current_devices()
+    Devices = Current_devices(root = root)
+    Devices.ADDFile(FileName)
     
     #Is being used to keep track of each button per device
     Buttons = Current_Buttons()
     
-    #Is being used to store a filename and directory for recording purposes
-    FileName = Current_File()
+    #Make a Data Display Window
+    Display = DisplayWindow(root)
+    
+    #Makes a plot
+    make_plot = Plotting_EMG(root,500,400)
     
     #Makes sure that the rest of the software has access to devices, buttons and filenames
-    Task_bar = GUI_Menu(root, Devices, Buttons, FileName)
+    Task_bar = GUI_Menu(root, Devices, Buttons, FileName, Display)
     
     #Creates the taskbar
     Task_bar.Call_Menu()
     
-    #Makes a plot
-    make_plot = Plotting_EMG(root,500,400)
+    root.protocol("WM_DELETE_WINDOW", Devices.ClOSING)
     
     #Runs the Gui
     root.mainloop()

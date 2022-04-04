@@ -9,6 +9,29 @@ from Bluetooth_Devices import *
 #Makes sure that the thread runs the function to completion
 def _asyncio_thread(async_loop,func):
     async_loop.run_until_complete(func)
+    
+def Main_DisplayData(root, textbox, devices, Blu):
+    
+    async_loop = asyncio.new_event_loop()
+    #Gives the asyncio functions their own thread to run on (Allows for multiple functions to run at once)
+    do_tasks(async_loop, WatchingData(devices, Blu))
+    
+    async_loop1 = asyncio.new_event_loop()
+    
+    do_tasks(async_loop1, DisplayData(textbox, devices))
+
+async def WatchingData(devices, Blu):
+    while Blu.collect_data:
+        if  Blu.collection:
+            devices.AddData(Blu.collection[0])
+            Blu.collection.pop(0)
+
+async def DisplayData(textbox, devices):
+    while 1:
+        if devices.collection:
+            textbox.text_box.insert('end', devices.collection[0]+"\n")
+            devices.collection.pop(0)
+    
 
 #Dad calls the KIDs that he needs to speak to
 def send_message(devices):
@@ -50,7 +73,7 @@ def SND_MSS(root,val,devices, inputtxt):
             #Message is sent
             devices.BLU_dev[i].sendMessage(tmp)
             
-def GrabFilePath(FileName):
+def GrabFilePath(FileName, devices):
     #Creates a new GUI
     root = tk.Tk()
     root.title('Grab File Path')
@@ -59,13 +82,13 @@ def GrabFilePath(FileName):
     root.update()
     
     #Button to select a file location to place the recorded data
-    open_file = tk.Button(root, text = "Storage location",  command=lambda: [file_browser(FileName, root)])
+    open_file = tk.Button(root, text = "Storage location",  command=lambda: [file_browser(FileName, root, devices)])
     open_file.place(x=150, y=10)
 
     root.mainloop()
 
 #Save the file location for later use
-def file_browser(FileName, master):
+def file_browser(FileName, master, devices):
     #Get the directory on where the file is going to be stored
     FileName.save_directory(fd.askdirectory())
     
@@ -80,11 +103,11 @@ def file_browser(FileName, master):
     inputtxt.grid(row = 40)
     
     #If clicked will create the file in the specified location
-    Button(root,text = "Create", command = lambda: [CreateFile(FileName,inputtxt), root.destroy(), master.destroy()]).grid(row = 50)
+    Button(root,text = "Create", command = lambda: [CreateFile(FileName,inputtxt, devices), root.destroy(), master.destroy()]).grid(row = 50)
     root.mainloop()
 
 #Creates the file in the specified location
-def CreateFile(FileName, inputtxt):
+def CreateFile(FileName, inputtxt, devices):
     #Update the file name
     FileName.update_name(str(inputtxt.get(1.0, "end-1c")))
     
@@ -93,9 +116,20 @@ def CreateFile(FileName, inputtxt):
     
     #Saves the entire path including file name (can be used to open csv)
     FileName.save_file()
+    
+    devices.File.Recording = True
+    RecordingData(devices)
+    
+def RecordingData(devices):
+   async_loop = asyncio.new_event_loop()
+   do_tasks(async_loop, devices.CollectData())
+    
+def Discovery(root, Devices, Buttons, Display):
+    async_loop = asyncio.new_event_loop()
+    do_tasks(async_loop, Discover_Devices(root, Devices, Buttons, Display))
         
 #Discoveres Devices to be selected to connect to 
-def Discover_Devices(root, conn_devices, buttons):
+async def Discover_Devices(root, conn_devices, buttons, display):
     #Discovers the available devices
     devices = bluetooth.discover_devices( lookup_names=True, lookup_class=True)
     
@@ -122,7 +156,7 @@ def Discover_Devices(root, conn_devices, buttons):
     lis = list(new_devices)
     
     #Add the selected KIDs to the DAD
-    Button(master = checkbox, text = 'Submit', command = lambda: check_states(checkbox,root, var, conn_devices, lis, buttons)).grid(row = 50)
+    Button(master = checkbox, text = 'Submit', command = lambda: check_states(checkbox,root, var, conn_devices, lis, buttons, display)).grid(row = 50)
         
     checkbox.mainloop()
 
@@ -131,7 +165,7 @@ def isChecked(key):
     key.change_state()
 
 #Add the KIDS to the main GUI
-def check_states(root,master, var_list, current, new, buttons):
+def check_states(root,master, var_list, current, new, buttons, display):
     for i in range(len(var_list)):
         #If KID is selected
         if (var_list[i].state):
@@ -140,7 +174,7 @@ def check_states(root,master, var_list, current, new, buttons):
             current.new_device(new[i])
             
             #Finally makes the connection
-            Added_Device(master,current,new[i][0], 'EKGKID_0', str(current.num) , 1,current.xpos, current.ypos, buttons)
+            Added_Device(master,current,new[i][0], 'EKGKID_0', str(current.num) , 1,current.xpos, current.ypos, buttons, display, current)
             
             #Updates x position of KID buttons in the DAD
             current.update_xpos()
@@ -152,7 +186,7 @@ def do_tasks(async_loop, func):
     threading.Thread(target=_asyncio_thread, args=(async_loop,func)).start()
 
 #Creates Buttons for added devices
-def Added_Device(root,current, temp, device_type, num, port, xpos, ypos, buttons):
+def Added_Device(root,current, temp, device_type, num, port, xpos, ypos, buttons, display, overall_devices):
     #Creates functions that run in parallel to each other
     async_loop = asyncio.new_event_loop()
     async_loop1 = asyncio.new_event_loop()
@@ -166,13 +200,11 @@ def Added_Device(root,current, temp, device_type, num, port, xpos, ypos, buttons
     
     #Gives the asyncio functions their own thread to run on (Allows for multiple functions to run at once)
     do_tasks(async_loop, device.CollectData())
-    #do_tasks(async_loop1, device.Data())
     #do_tasks(async_loop2, device.PlotData())
-    
     #Button to be created 
     B1 = Button(master=root, text=device_type+num, command= lambda: device.ChangeCollecting())
-    B2 = Button(master=root, text="TogglePlot", command= lambda: device.ToggleGraph())
-    B3 = Button(master=root, text="SoloGraph", command= lambda: device.SoloGraph())
+    B2 = Button(master=root, text=device_type+num+"Plot", command= lambda: device.ToggleGraph())
+    B3 = Button(master=root, text=device_type+num+"Graph", command= lambda: device.SoloGraph())
     
     #Adds buttons to a list to keep track of
     buttons.add_Button([B1, B2, B3])
@@ -181,9 +213,14 @@ def Added_Device(root,current, temp, device_type, num, port, xpos, ypos, buttons
     buttons.latest_Button()[0].place(x =xpos, y= ypos)
     buttons.latest_Button()[1].place(x =xpos, y= ypos+30)
     buttons.latest_Button()[2].place(x =xpos, y= ypos+60)
+    Main_DisplayData(root, display, overall_devices, device)
+
+def DeviceRemoval(root, Devices, Buttons):
+    async_loop = asyncio.new_event_loop()
+    do_tasks(async_loop, Remove_Devices(root, Devices, Buttons))
 
 #Selection for removal of a KID
-def Remove_Devices(root, devices, buttons):
+async def Remove_Devices(root, devices, buttons):
     #Creates a new GUI
     checkbox = Tk()
     checkbox.title('Remove Device(s)')

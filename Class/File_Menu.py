@@ -2,7 +2,7 @@ from tkinter import Tk, Frame, Menu
 from Functions import *
 
 class GUI_Menu():
-    def __init__(self, root, Devices, Buttons, FileName):
+    def __init__(self, root, Devices, Buttons, FileName, Display):
         #Saves the Main Gui 
         self.root = root
         
@@ -14,6 +14,9 @@ class GUI_Menu():
         
         #Used to store the current file for recording purposes
         self.FileName = FileName
+        
+        #Used to store the Data Display
+        self.Display = Display
         
         # create a menubar
         self.menubar = Menu(self.root)
@@ -30,8 +33,8 @@ class GUI_Menu():
         file_menu = Menu(self.menubar,tearoff=0)
         
         # add menu items to the File menu
-        file_menu.add_command(label='Start Recording',command = lambda : GrabFilePath(self.FileName))
-        file_menu.add_command(label='Stop Recording')
+        file_menu.add_command(label='Start Recording',command = lambda : GrabFilePath(self.FileName, self.Devices))
+        file_menu.add_command(label='Stop Recording', command = lambda : self.FileName.StopRecording())
         #file_menu.add_command(label='Close')
         file_menu.add_separator()
         file_menu.add_command(label='Exit',command=self.root.destroy)
@@ -44,9 +47,9 @@ class GUI_Menu():
         device_menu = Menu(self.menubar,tearoff=0)
         
         # add menu items to the Device menu
-        device_menu.add_command(label = 'Add New Device', command =lambda: Discover_Devices(self.root, self.Devices, self.Buttons))
+        device_menu.add_command(label = 'Add New Device', command =lambda: Discovery(self.root, self.Devices, self.Buttons, self.Display))
         device_menu.add_command(label = 'Send Message', command =lambda: send_message(self.Devices))
-        device_menu.add_command(label = 'Remove Device', command =lambda: Remove_Devices(self.root, self.Devices, self.Buttons))
+        device_menu.add_command(label = 'Remove Device', command =lambda: DeviceRemoval(self.root, self.Devices, self.Buttons))
         
         # add the Device menu to the menubar
         self.menubar.add_cascade(label="Device",menu=device_menu)

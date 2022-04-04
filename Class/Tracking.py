@@ -1,4 +1,6 @@
 import csv
+from tkinter import *
+from datetime import datetime
 
 ###################################################################################################################################################
 ###################################################################################################################################################
@@ -10,10 +12,12 @@ import csv
 
 #Current Devices
 class Current_devices:
-    def __init__(self, devices = list(),BLU_dev = list(), num =-1, xpos = 0,ypos = 450):
+    def __init__(self,root, devices = list(),BLU_dev = list(), num =-1, xpos = 0,ypos = 450):
         #Saves a list of devices and their class connection
         self.devices = devices
         self.BLU_dev = BLU_dev
+        
+        self.root = root
         
         #Keeps track of the number of devices
         self.num = num
@@ -21,6 +25,13 @@ class Current_devices:
         #Keeps track of the current xpos and ypos
         self.xpos = xpos
         self.ypos = ypos
+        
+        self.collection = list()
+        
+        self.RecordCollect = list()
+        
+    def ADDFile(self,file):
+        self.File = file
         
     def update_ypos(self,update_pos = 100):
         #Updates ypos
@@ -31,7 +42,7 @@ class Current_devices:
         self.xpos = self.xpos + update_pos
         
         #If xpos is above a certain threshold
-        if(self.xpos > 500):
+        if(self.xpos > 380):
             #Resets xpos to 0
             self.xpos = 0
             
@@ -50,7 +61,24 @@ class Current_devices:
     
     #Grabs the latest device added    
     def latest_BLU(self):
-        return self.BLU_dev[self.num] 
+        return self.BLU_dev[self.num]
+    
+    def AddData(self, data):
+        self.collection.append(data[0])
+        if self.File.Recording:
+            self.RecordCollect.append(data[1])
+            
+    async def CollectData(self):
+        while self.File.Recording:
+            file = open(self.File.loc, 'a')
+            if self.RecordCollect:
+                writer = csv.writer(file)
+                now = datetime.now()
+                Ctime = now.strftime("%H:%M:%S")
+                row = [Ctime, 'EKG', self.RecordCollect[0]]
+                writer.writerow(row)
+                self.RecordCollect.pop(0)
+            file.close()
     
     #Removes the device from a specified location and closes the connection
     def remove_device(self, pos):
@@ -58,6 +86,16 @@ class Current_devices:
         self.BLU_dev[pos].CloseConnection()
         self.BLU_dev.pop(pos)
         self.num = self.num - 1
+    
+    def TurnOFF(self):
+        for dev in self.BLU_dev:
+            dev.TURN_OFF()
+            
+    def ClOSING(self):
+        if messagebox.askokcancel("Quit", "Do you want to quit?"):
+            self.File.Recording = False
+            self.TurnOFF()
+            self.root.destroy()
 
 #Keeps track of devices that may be added 
 class Potential_devices:
@@ -97,12 +135,17 @@ class Current_Buttons:
 class Current_File:
     def __init__(self, name = 'default'):
         self.name = name
+        self.Recording = False
     
     def update_name(self,name):
         self.name = name
         
     def save_directory(self, name):
         self.directory = name
+        
+    def StopRecording(self):
+        messagebox.showinfo("Information","Stopping Recording")
+        self.Recording = False
         
     def save_file(self):
         self.loc = self.directory  + '/'+ self.name
@@ -114,4 +157,3 @@ class Current_File:
         row = ['Time','Device_Name' , 'Data']
         writer.writerow(row)
         file.close()
-        
