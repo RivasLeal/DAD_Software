@@ -1,6 +1,7 @@
 import asyncio
 import threading
 import tkinter as tk
+import matplotlib.animation as animation
 from tkinter import *
 from tkinter import filedialog as fd
 from Tracking import *
@@ -189,8 +190,8 @@ def do_tasks(async_loop, func):
 def Added_Device(root,current, temp, device_type, num, port, xpos, ypos, buttons, display, overall_devices):
     #Creates functions that run in parallel to each other
     async_loop = asyncio.new_event_loop()
-    async_loop1 = asyncio.new_event_loop()
-    async_loop2 = asyncio.new_event_loop()
+    #async_loop1 = asyncio.new_event_loop()
+    #async_loop2 = asyncio.new_event_loop()
     
     #creates a BlueTooth device type 
     device = current.new_BLU(Bluetooth_Devices(device_type, num, temp, port))
@@ -203,8 +204,8 @@ def Added_Device(root,current, temp, device_type, num, port, xpos, ypos, buttons
     #do_tasks(async_loop2, device.PlotData())
     #Button to be created 
     B1 = Button(master=root, text=device_type+num, command= lambda: device.ChangeCollecting())
-    B2 = Button(master=root, text=device_type+num+"Plot", command= lambda: device.ToggleGraph())
-    B3 = Button(master=root, text=device_type+num+"Graph", command= lambda: device.SoloGraph())
+    B2 = Button(master=root, text=device_type+num+"Plot", command= lambda: {device.ToggleGraph(), Main_recording_State(device)})
+    B3 = Button(master=root, text=device_type+num+"Close", command= lambda: Graphing_Close(device))
     
     #Adds buttons to a list to keep track of
     buttons.add_Button([B1, B2, B3])
@@ -214,10 +215,18 @@ def Added_Device(root,current, temp, device_type, num, port, xpos, ypos, buttons
     buttons.latest_Button()[1].place(x =xpos, y= ypos+30)
     buttons.latest_Button()[2].place(x =xpos, y= ypos+60)
     Main_DisplayData(root, display, overall_devices, device)
+    
+def Main_recording_State(device):
+    async_loop = asyncio.new_event_loop()
+    do_tasks(async_loop, device.MakeGraph())
 
 def DeviceRemoval(root, Devices, Buttons):
     async_loop = asyncio.new_event_loop()
     do_tasks(async_loop, Remove_Devices(root, Devices, Buttons))
+    
+def Graphing_Close(Blu):
+    async_loop = asyncio.new_event_loop()
+    do_tasks(async_loop, Blu.Close_graph())
 
 #Selection for removal of a KID
 async def Remove_Devices(root, devices, buttons):
