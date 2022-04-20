@@ -2,6 +2,8 @@ from tkinter import *
 import sys
 import os
 import asyncio
+import PIL
+from PIL import ImageTk
 sys.path.append(os.path.abspath("Class"))
 from Bluetooth_Devices import *
 from File_Menu import *
@@ -24,6 +26,8 @@ def main():
     root.geometry("820x790")
     
     #Taskbar Icon for the GUI
+    image = PIL.Image.open("dad.png")
+    resize_image = image.resize((500,400))
     photo = PhotoImage(file = "dad.png")
     root.iconphoto(True, photo)
     
@@ -41,7 +45,13 @@ def main():
     Display = DisplayWindow(root)
     
     #Makes a plot
-    make_plot = Plotting_EMG(root,500,400)
+    img = ImageTk.PhotoImage(resize_image)
+    label1 = Label(image=img)
+    label1.image = img
+
+    # Position image
+    label1.place(x=0, y=0)
+    #make_plot = Plotting_EMG(root,500,400)
     
     #Makes sure that the rest of the software has access to devices, buttons and filenames
     Task_bar = GUI_Menu(root, Devices, Buttons, FileName, Display)

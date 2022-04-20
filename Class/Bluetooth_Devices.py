@@ -1,4 +1,4 @@
-import bluetooth
+from bleak import BleakScanner,BleakClient
 import struct
 import asyncio
 import time
@@ -12,18 +12,16 @@ import numpy as np
 #from Functions import * Do not uncomment otherwise Bluetooth will not connect to any device
 
 class Bluetooth_Devices:
-    def __init__(self, DataType, DeviceNumber, Address, port):
-        #Data Type of the device
-        self.DataType = DataType
+    def __init__(self, Address, name):
         
-        #Device Number (may become absolete and combined with datatype to become Name)
-        self.DeviceNumber = DeviceNumber
+        self.UUID = "b568e651-7afb-4bcd-809b-9b7769361e28"
+          
+        self.name = name
         
         #Address of the bluetooth device
         self.Address = Address
         
-        #Port for establishing a connection
-        self.port = port
+        self.client = BleakClient(self.Address)
         
         #storage for incoming data
         self.data = ""
@@ -55,24 +53,21 @@ class Bluetooth_Devices:
      
     def MakeConnection(self):
         #Create the Socket for the connection
-        self.s = bluetooth.BluetoothSocket(bluetooth.RFCOMM)
-        
-        #Establishing the Connection
-        self.s.connect((self.Address, self.port))
-        print("Connection Made")
+        print("")
     
-    def CloseConnection(self):
+    async def CloseConnection(self):
         #Closing the connection
-        self.s.close()
+        self.client.disconnect()
+        print("Please Close")
         
     def ChangeCollecting(self, Closing = False):
         if Closing:
-            ba = struct.pack("?",False)
-            self.s.send(ba)
+           # ba = struct.pack("?",False)
+            self.CloseConnection
         else:
             self.state = not(self.state)
-            ba = struct.pack("?",self.state)
-            self.s.send(ba)
+            #ba = struct.pack("?",self.state)
+            #self.s.send(ba)
     
     def ToggleGraph(self):
         self.solo_plot_state = not(self.solo_plot_state)
@@ -115,43 +110,27 @@ class Bluetooth_Devices:
         #encrpyting the message 
         message = b + message.encode('utf-8')
         
-        #Sending the message
-        self.s.send(message)
+        client.write_gatt_char(data = message,char_specifier  = self.UUID, response =False)
+        
+    def callback(self,sender: int, data: bytearray):
+        int_data = [x for x in data]
+        #print(f"{sender}: {int_data[6]}")
+        #Add data to a collection that will be used to display data
+        if(self.collect_data):
+            temp = "Received: " + str(int_data[6]) + " from Device: " +self.name
+            self.collection.append([temp,[self.name,int_data[6]]])
+        if(self.solo_plot_state):
+            self.recordingCollection.append(int_data[6])
+
     
     async def CollectData(self):
-        #Used to make sure the Gui has time to collect the data
-        count = 0
-        
+        await self.client.connect()
+        print("Connection Made")
         while self.Collect_data_while:
             #Will only run if the DAD wants to talk to its KID (default = False)
+            await self.client.start_notify(self.UUID, self.callback) 
             while self.state:
-                
-                #Clears The current data
-                data = ""
-                
-                while count < 2:
-                    #Recieves data from buffer
-                    d = self.s.recv(4096)
-                    
-                    #Adds the data to itself
-                    data += (str(d.decode("utf-8")))
-                    count += 1
-                    
-                #Add data to a collection that will be used to display data
-                if(data != "" and self.collect_data):
-                    temp = "Received: " + data + " from Device: " +self.DeviceNumber
-                    self.collection.append([temp,data])
-                if(self.solo_plot_state):
-                    try:
-                        self.recordingCollection.append(float(data))
-                    except:
-                        print("Data came in to fast")
-                    
-                #Resets Count
-                count = 0
-                
-                #Prints data received
-                print("Received: " + data + " from Device: " +self.DeviceNumber)
+                await self.client.write_gatt_char(data = b"\x50\x01\x08",char_specifier  = self.UUID, response =True)
             #await asyncio.sleep(0.1)
                 
     def TURN_OFF(self):

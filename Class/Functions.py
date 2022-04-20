@@ -132,13 +132,7 @@ def Discovery(root, Devices, Buttons, Display):
 #Discoveres Devices to be selected to connect to 
 async def Discover_Devices(root, conn_devices, buttons, display):
     #Discovers the available devices
-    devices = bluetooth.discover_devices( lookup_names=True, lookup_class=True)
-    
-    #Turns the list into a set (sets don't allow duplication)
-    devices_found = set(devices)
-    
-    #Find the difference between the already connected devices and the already connceted devices
-    new_devices = devices_found.difference(set(conn_devices.devices))
+    devices = await BleakScanner.discover()
     
     #Creates new GUI
     checkbox = Tk()
@@ -148,16 +142,14 @@ async def Discover_Devices(root, conn_devices, buttons, display):
     #Will keep track of the KIDS had by the DAD
     var = dict()
     
-    for  i in range(len(new_devices)):
+    for  i in range(len(devices)):
         var[i] = Potential_devices(i,False)
-        #Changes the state if wanted by the DAD
-        Checkbutton(checkbox, text=devices[i], command=lambda key=var[i] : isChecked(key)).grid(row=i, sticky=W)
-    
-    #Turns the set to a list
-    lis = list(new_devices)
+        if "EMG" in devices[i].name:
+            #Changes the state if wanted by the DAD
+            Checkbutton(checkbox, text=devices[i], command=lambda key=var[i] : isChecked(key)).grid(row=i, sticky=W)
     
     #Add the selected KIDs to the DAD
-    Button(master = checkbox, text = 'Submit', command = lambda: check_states(checkbox,root, var, conn_devices, lis, buttons, display)).grid(row = 50)
+    Button(master = checkbox, text = 'Submit', command = lambda: check_states(checkbox,root, var, conn_devices, devices, buttons, display)).grid(row = 50)
         
     checkbox.mainloop()
 
@@ -175,7 +167,7 @@ def check_states(root,master, var_list, current, new, buttons, display):
             current.new_device(new[i])
             
             #Finally makes the connection
-            Added_Device(master,current,new[i][0], 'EKGKID_0', str(current.num) , 1,current.xpos, current.ypos, buttons, display, current)
+            Added_Device(master,current, new[i] ,current.xpos, current.ypos, buttons, display, current)
             
             #Updates x position of KID buttons in the DAD
             current.update_xpos()
@@ -187,14 +179,15 @@ def do_tasks(async_loop, func):
     threading.Thread(target=_asyncio_thread, args=(async_loop,func)).start()
 
 #Creates Buttons for added devices
-def Added_Device(root,current, temp, device_type, num, port, xpos, ypos, buttons, display, overall_devices):
+def Added_Device(root,current, device_name, xpos, ypos, buttons, display, overall_devices):
     #Creates functions that run in parallel to each other
     async_loop = asyncio.new_event_loop()
     #async_loop1 = asyncio.new_event_loop()
     #async_loop2 = asyncio.new_event_loop()
     
-    #creates a BlueTooth device type 
-    device = current.new_BLU(Bluetooth_Devices(device_type, num, temp, port))
+    #creates a BlueTooth device type
+    print(device_name)
+    device = current.new_BLU(Bluetooth_Devices(device_name.address, device_name.name))
     
     #Makes the Bluetooth connection
     device.MakeConnection()
@@ -203,9 +196,9 @@ def Added_Device(root,current, temp, device_type, num, port, xpos, ypos, buttons
     do_tasks(async_loop, device.CollectData())
     #do_tasks(async_loop2, device.PlotData())
     #Button to be created 
-    B1 = Button(master=root, text=device_type+num, command= lambda: device.ChangeCollecting())
-    B2 = Button(master=root, text=device_type+num+"Plot", command= lambda: {device.ToggleGraph(), Main_recording_State(device)})
-    B3 = Button(master=root, text=device_type+num+"Close", command= lambda: Graphing_Close(device))
+    B1 = Button(master=root, text=device_name.name, command= lambda: device.ChangeCollecting())
+    B2 = Button(master=root, text=device_name.name+" Plot", command= lambda: {device.ToggleGraph(), Main_recording_State(device)})
+    B3 = Button(master=root, text=device_name.name+" Close", command= lambda: Graphing_Close(device))
     
     #Adds buttons to a list to keep track of
     buttons.add_Button([B1, B2, B3])

@@ -75,7 +75,8 @@ class Current_devices:
                 writer = csv.writer(file)
                 now = datetime.now()
                 Ctime = now.strftime("%H:%M:%S")
-                row = [Ctime, 'EKG', self.RecordCollect[0]]
+                print(self.RecordCollect[0])
+                row = [Ctime, self.RecordCollect[0][0], self.RecordCollect[0][1]]
                 writer.writerow(row)
                 self.RecordCollect.pop(0)
             file.close()
